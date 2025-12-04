@@ -3,19 +3,17 @@ import yt_dlp
 import json
 import os
 
-# 1. Check for URL
+# 1. Check Input
 if len(sys.argv) < 2:
     print(json.dumps({"status": "error", "message": "No URL provided"}))
     sys.exit()
 
 url = sys.argv[1]
-quality = sys.argv[2] if len(sys.argv) > 2 else None  # e.g., "1080" or "720"
-
+quality = sys.argv[2] if len(sys.argv) > 2 else None
 output_folder = "/var/www/html/downloads"
-cookie_file = "/var/www/html/cookies.txt" # It looks for this file automatically
+cookie_file = "/var/www/html/cookies.txt"
 
-# 2. Define Quality Logic
-# If user asks for 720, we get best video <= 720p. If not, we get absolute best.
+# 2. Quality Logic
 if quality:
     format_string = f'bestvideo[height<={quality}]+bestaudio/best[height<={quality}]'
 else:
@@ -24,24 +22,21 @@ else:
 ydl_opts = {
     'quiet': True,
     'no_warnings': True,
+    'noprogress': True,     # <--- THIS FIXES YOUR PROBLEM (Stops the % logs)
     'format': format_string,
     'merge_output_format': 'mp4',
     'outtmpl': f'{output_folder}/%(id)s.%(ext)s',
-    'max_filesize': 500 * 1024 * 1024, # Limit to 500MB
-    
-    # Fake a Windows User Agent to trick YouTube
+    'max_filesize': 500 * 1024 * 1024,
     'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-    
-    # Only use cookies if you uploaded the file
     'cookiefile': cookie_file if os.path.exists(cookie_file) else None,
 }
 
 try:
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
-        
         filename = f"{info['id']}.mp4"
 
+        # Return CLEAN JSON
         print(json.dumps({
             "status": "success",
             "title": info.get('title'),
